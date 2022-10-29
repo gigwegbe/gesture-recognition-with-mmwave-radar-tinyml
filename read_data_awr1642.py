@@ -1,4 +1,5 @@
 import serial
+import serial.tools.list_ports
 import time
 import numpy as np
 import pyqtgraph as pg
@@ -13,6 +14,34 @@ byteBuffer = np.zeros(2**15,dtype = 'uint8')
 byteBufferLength = 0;
 
 
+
+# ------------------------------------------------------------------
+
+# Function to find ports for both CLIport and Dataport respectively
+def findPorts(): 
+    print('Looking for ports...', end='')
+    pattern = "XDS110"
+    ports = []
+    for port in serial.tools.list_ports.comports():
+        if pattern in str(port):
+            ports.append(str(port).split()[0])
+
+    ports.sort()
+
+    if len(ports) < 2: 
+        print("Ports not founds")
+        return 
+    
+    if len(ports) > 2:
+        print("Found ports")
+        ports = ports[:2]
+
+    ports1 = ports[0]
+    ports2 = ports[1]
+    print(f"-----port1(cliport):{ports1}, ----port2(dataport):{ports2}------")
+
+    return ports1, ports2 
+
 # ------------------------------------------------------------------
 
 # Function to configure the serial ports and send the data from
@@ -21,11 +50,13 @@ def serialConfig(configFileName):
     
     global CLIport
     global Dataport
+
     # Open the serial ports for the configuration and the data ports
-    
+    ports1, ports2 = findPorts()
+
     # Raspberry pi
-    CLIport = serial.Serial('/dev/ttyACM2', 115200)
-    Dataport = serial.Serial('/dev/ttyACM3', 921600)
+    CLIport = serial.Serial(ports1, 115200)
+    Dataport = serial.Serial(ports2, 921600)
     
     # Windows
     #CLIport = serial.Serial('COM4', 115200)
