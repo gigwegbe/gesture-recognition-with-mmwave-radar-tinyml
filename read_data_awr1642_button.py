@@ -1,9 +1,12 @@
+import traceback
 import serial
 import serial.tools.list_ports
 import time
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
+from getch import getch #Getch = getChar, does single-char input.
+from readchar import readkey, key
 
 # Change the configuration file name
 configFileName = 'AWR1642_SDK3.5.cfg'
@@ -12,7 +15,7 @@ CLIport = {}
 Dataport = {}
 byteBuffer = np.zeros(2**15,dtype = 'uint8')
 byteBufferLength = 0;
-
+if_button_is_pushed = 0
 
 
 # ------------------------------------------------------------------
@@ -267,7 +270,18 @@ def readAndParseData18xx(Dataport, configParameters):
             
             # Check that there are no errors with the buffer length
             if byteBufferLength < 0:
-                byteBufferLength = 0         
+                byteBufferLength = 0    
+
+        # if if_button_is_pushed == 1:
+        #     time.sleep(0.02)
+        #     slope = 1
+        #     try: 
+        #         counter = 0 
+        #         next_frame = 0 
+        #         for i in range(len(detObj['x'])): 
+        #             print(i)     
+        #     except Exception:
+        #         traceback.print_exc()
 
     return dataOK, frameNumber, detObj
 
@@ -321,8 +335,15 @@ win.show()
 detObj = {}  
 frameData = {}    
 currentIndex = 0
+
+
 while True:
+    # k = readkey()
+
     try:
+        et = input("")
+        # et = "testing"
+        print(f"You entered a command:{et} -> s: save, p: preview")
         # Update the data and check if the data is okay
         dataOk = update()
         
@@ -335,7 +356,8 @@ while True:
         time.sleep(0.05) # Sampling frequency of 30 Hz
         
     # Stop the program and close everything if Ctrl + c is pressed
-    except KeyboardInterrupt:
+    # except KeyboardInterrupt:
+    except Exception:
         CLIport.write(('sensorStop\n').encode())
         CLIport.close()
         Dataport.close()
