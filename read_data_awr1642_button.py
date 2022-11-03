@@ -130,13 +130,17 @@ def parseConfigFile(configFileName):
 
 # Funtion to read and parse the incoming data
 def readAndParseData18xx(Dataport, configParameters):
-    global byteBuffer, byteBufferLength
-    
+    global byteBuffer, byteBufferLength, hb100_data, slope, GestureNumber
+    slope = 0  # detect falling slope for button
+    GestureNumber = 1  # save with asceding order 'gesture1', 'gesture2' etc
+    byteBuffer = np.zeros(2 ** 15, dtype='uint8')
+    byteBufferLength = 0;
     # Constants
-    OBJ_STRUCT_SIZE_BYTES = 12;
-    BYTE_VEC_ACC_MAX_SIZE = 2**15;
+    # OBJ_STRUCT_SIZE_BYTES = 12;
+    # BYTE_VEC_ACC_MAX_SIZE = 2**15;
     MMWDEMO_UART_MSG_DETECTED_POINTS = 1;
-    MMWDEMO_UART_MSG_RANGE_PROFILE   = 2;
+    # MMWDEMO_UART_MSG_RANGE_PROFILE   = 2;
+
     maxBufferSize = 2**15;
     tlvHeaderLengthInBytes = 8;
     pointLengthInBytes = 16;
@@ -145,12 +149,25 @@ def readAndParseData18xx(Dataport, configParameters):
     # Initialize variables
     magicOK = 0 # Checks if magic number has been read
     dataOK = 0 # Checks if the data has been read correctly
-    frameNumber = 0
+    # frameNumber = 0
     detObj = {}
+    tlv_type = 0
     
+     # Arrays to store gesture data for ML
+    dtype = [('framenumber', np.int16), ('objnumber', np.int16), ('Range', np.float64),
+             ('velocity', np.float64), ('peakval', np.float64), ('x', np.float64), ('y', np.float64)]
+
+    global GestureData, FrameIndex  
+    GestureData = np.array([(0, 0, 0, 0, 0, 0, 0)], dtype=dtype)
+    FrameIndex = 1
+
     readBuffer = Dataport.read(Dataport.in_waiting)
     byteVec = np.frombuffer(readBuffer, dtype = 'uint8')
     byteCount = len(byteVec)
+    print(readBuffer)
+
+    # while(True):
+    #     print("Helllo.....")
     
     # Check that the buffer is not full, and then add the data to the buffer
     if (byteBufferLength + byteCount) < maxBufferSize:
@@ -172,6 +189,7 @@ def readAndParseData18xx(Dataport, configParameters):
                
         # Check that startIdx is not empty
         if startIdx:
+            print(startIdx)
             
             # Remove the data before the first start index
             if startIdx[0] > 0 and startIdx[0] < byteBufferLength:
@@ -193,84 +211,166 @@ def readAndParseData18xx(Dataport, configParameters):
             if (byteBufferLength >= totalPacketLen) and (byteBufferLength != 0):
                 magicOK = 1
     
-    # If magicOK is equal to 1 then process the message
     if magicOK:
-        # word array to convert 4 bytes to a 32 bit number
-        word = [1, 2**8, 2**16, 2**24]
-        
-        # Initialize the pointer index
-        idX = 0
-        
-        # Read the header
-        magicNumber = byteBuffer[idX:idX+8]
-        idX += 8
-        version = format(np.matmul(byteBuffer[idX:idX+4],word),'x')
-        idX += 4
-        totalPacketLen = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        platform = format(np.matmul(byteBuffer[idX:idX+4],word),'x')
-        idX += 4
-        frameNumber = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        timeCpuCycles = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        numDetectedObj = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        numTLVs = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        subFrameNumber = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
+            # word array to convert 4 bytes to a 32 bit number
+            word = [1, 2 ** 8, 2 ** 16, 2 ** 24]
+
+            # Initialize the pointer index
+            idX = 0
+
+            # Read the header
+            magicNumber = byteBuffer[idX:idX + 8]
+            idX += 8
+            version = format(np.matmul(byteBuffer[idX:idX + 4], word), 'x')
+            idX += 4
+            totalPacketLen = np.matmul(byteBuffer[idX:idX + 4], word)
+            idX += 4
+            platform = format(np.matmul(byteBuffer[idX:idX + 4], word), 'x')
+            idX += 4
+            frameNumber = np.matmul(byteBuffer[idX:idX + 4], word)
+            idX += 4
+            timeCpuCycles = np.matmul(byteBuffer[idX:idX + 4], word)
+            idX += 4
+            numDetectedObj = np.matmul(byteBuffer[idX:idX + 4], word)
+            idX += 4
+            numTLVs = np.matmul(byteBuffer[idX:idX + 4], word)
+            idX += 4
+            subFrameNumber = np.matmul(byteBuffer[idX:idX + 4], word)
+            idX += 4
+            print(subFrameNumber)
+
+            # Read the TLV messages
+            for tlvIdx in range(numTLVs):
+
+                # word array to convert 4 bytes to a 32 bit number
+                word = [1, 2 ** 8, 2 ** 16, 2 ** 24]
+
+                # Check the header of the TLV message
+                try:
+                    tlv_type = np.matmul(byteBuffer[idX:idX + 4], word)
+                    idX += 4
+                    tlv_length = np.matmul(byteBuffer[idX:idX + 4], word)
+                    idX += 4
+                except:
+                    pass
+
+                # Read the data depending on the TLV message
+                if tlv_type == MMWDEMO_UART_MSG_DETECTED_POINTS:
+
+                    # word array to convert 4 bytes to a 16 bit number
+                    word = [1, 2 ** 8]
+                    tlv_numObj = np.matmul(byteBuffer[idX:idX + 2], word)
+                    idX += 2
+                    tlv_xyzQFormat = 2 ** np.matmul(byteBuffer[idX:idX + 2], word)
+                    idX += 2
+
+                    # Initialize the arrays
+                    rangeIdx = np.zeros(tlv_numObj, dtype='int16')
+                    dopplerIdx = np.zeros(tlv_numObj, dtype='int16')
+                    peakVal = np.zeros(tlv_numObj, dtype='int16')
+                    x = np.zeros(tlv_numObj, dtype='int16')
+                    y = np.zeros(tlv_numObj, dtype='int16')
+                    z = np.zeros(tlv_numObj, dtype='int16')
+
+                    for objectNum in range(tlv_numObj):
+                        # Read the data for each object
+                        rangeIdx[objectNum] = np.matmul(byteBuffer[idX:idX + 2], word)
+                        idX += 2
+                        dopplerIdx[objectNum] = np.matmul(byteBuffer[idX:idX + 2], word)
+                        idX += 2
+                        peakVal[objectNum] = np.matmul(byteBuffer[idX:idX + 2], word)
+                        idX += 2
+                        x[objectNum] = np.matmul(byteBuffer[idX:idX + 2], word)
+                        idX += 2
+                        y[objectNum] = np.matmul(byteBuffer[idX:idX + 2], word)
+                        idX += 2
+                        z[objectNum] = np.matmul(byteBuffer[idX:idX + 2], word)
+                        idX += 2
+
+                        print(idX)
+
+                    # Make the necessary corrections and calculate the rest of the data
+                    rangeVal = rangeIdx * configParameters["rangeIdxToMeters"]
+                    dopplerIdx[dopplerIdx > (configParameters["numDopplerBins"] / 2 - 1)] = dopplerIdx[dopplerIdx > (
+                            configParameters["numDopplerBins"] / 2 - 1)] - 65535
+                    dopplerVal = dopplerIdx * configParameters["dopplerResolutionMps"]
+                    x = x / tlv_xyzQFormat
+                    y = y / tlv_xyzQFormat
+                    z = z / tlv_xyzQFormat
+
+                    # Store the data in the detObj dictionary
+                    detObj = {"numObj": tlv_numObj, "rangeIdx": rangeIdx, "range": rangeVal, "dopplerIdx": dopplerIdx, \
+                              "doppler": dopplerVal, "peakVal": peakVal, "x": x, "y": y, "z": z}
+                    # print(detObj)
+            # Remove already processed data
+            try:
+                if idX > 0 and byteBufferLength > idX:
+                    shiftSize = totalPacketLen
+
+                    byteBuffer[:byteBufferLength - shiftSize] = byteBuffer[shiftSize:byteBufferLength]
+                    byteBuffer[byteBufferLength - shiftSize:] = np.zeros(len(byteBuffer[byteBufferLength - shiftSize:]),
+                                                                         dtype='uint8')
+                    byteBufferLength = byteBufferLength - shiftSize
+
+                    # Check that there are no errors with the buffer length
+                    if byteBufferLength < 0:
+                        byteBufferLength = 0
+            except:
+                pass
+
+
+
 
         # Read the TLV messages
-        for tlvIdx in range(numTLVs):
+        # for tlvIdx in range(numTLVs):
             
-            # word array to convert 4 bytes to a 32 bit number
-            word = [1, 2**8, 2**16, 2**24]
+        #     # word array to convert 4 bytes to a 32 bit number
+        #     word = [1, 2**8, 2**16, 2**24]
 
-            # Check the header of the TLV message
-            tlv_type = np.matmul(byteBuffer[idX:idX+4],word)
-            idX += 4
-            tlv_length = np.matmul(byteBuffer[idX:idX+4],word)
-            idX += 4
+        #     # Check the header of the TLV message
+        #     tlv_type = np.matmul(byteBuffer[idX:idX+4],word)
+        #     idX += 4
+        #     tlv_length = np.matmul(byteBuffer[idX:idX+4],word)
+        #     idX += 4
 
-            # Read the data depending on the TLV message
-            if tlv_type == MMWDEMO_UART_MSG_DETECTED_POINTS:
+        #     # Read the data depending on the TLV message
+        #     if tlv_type == MMWDEMO_UART_MSG_DETECTED_POINTS:
 
-                # Initialize the arrays
-                x = np.zeros(numDetectedObj,dtype=np.float32)
-                y = np.zeros(numDetectedObj,dtype=np.float32)
-                z = np.zeros(numDetectedObj,dtype=np.float32)
-                velocity = np.zeros(numDetectedObj,dtype=np.float32)
+        #         # Initialize the arrays
+        #         x = np.zeros(numDetectedObj,dtype=np.float32)
+        #         y = np.zeros(numDetectedObj,dtype=np.float32)
+        #         z = np.zeros(numDetectedObj,dtype=np.float32)
+        #         velocity = np.zeros(numDetectedObj,dtype=np.float32)
                 
-                for objectNum in range(numDetectedObj):
+        #         for objectNum in range(numDetectedObj):
                     
-                    # Read the data for each object
-                    x[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                    y[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                    z[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                    velocity[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
+        #             # Read the data for each object
+        #             x[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
+        #             idX += 4
+        #             y[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
+        #             idX += 4
+        #             z[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
+        #             idX += 4
+        #             velocity[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
+        #             idX += 4
                 
-                # Store the data in the detObj dictionary
-                detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
-                dataOK = 1
+        #         # Store the data in the detObj dictionary
+        #         detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
+        #         dataOK = 1
                 
  
-        # Remove already processed data
-        if idX > 0 and byteBufferLength>idX:
-            shiftSize = totalPacketLen
+        # # Remove already processed data
+        # if idX > 0 and byteBufferLength>idX:
+        #     shiftSize = totalPacketLen
             
                 
-            byteBuffer[:byteBufferLength - shiftSize] = byteBuffer[shiftSize:byteBufferLength]
-            byteBuffer[byteBufferLength - shiftSize:] = np.zeros(len(byteBuffer[byteBufferLength - shiftSize:]),dtype = 'uint8')
-            byteBufferLength = byteBufferLength - shiftSize
+        #     byteBuffer[:byteBufferLength - shiftSize] = byteBuffer[shiftSize:byteBufferLength]
+        #     byteBuffer[byteBufferLength - shiftSize:] = np.zeros(len(byteBuffer[byteBufferLength - shiftSize:]),dtype = 'uint8')
+        #     byteBufferLength = byteBufferLength - shiftSize
             
-            # Check that there are no errors with the buffer length
-            if byteBufferLength < 0:
-                byteBufferLength = 0    
+        #     # Check that there are no errors with the buffer length
+        #     if byteBufferLength < 0:
+        #         byteBufferLength = 0    
 
         # if if_button_is_pushed == 1:
         #     time.sleep(0.02)
@@ -341,9 +441,9 @@ while True:
     # k = readkey()
 
     try:
-        et = input("")
+        # et = input("")
         # et = "testing"
-        print(f"You entered a command:{et} -> s: save, p: preview")
+        # print(f"You entered a command:{et} -> s: save, p: preview")
         # Update the data and check if the data is okay
         dataOk = update()
         
