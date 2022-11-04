@@ -53,6 +53,11 @@ class Ui_Dialog(object):
         self.button2.setText("Preview")
         self.button2.setGeometry(QtCore.QRect(60, 700, 130, 51))
 
+        #button to make inference
+        self.button3 = QtWidgets.QPushButton(Dialog)
+        self.button3.setText("Preview")
+        self.button3.setGeometry(QtCore.QRect(470, 700, 130, 51))
+
         #list to choose what gesture you want to write into .csv file
         self.list = QtWidgets.QListWidget(Dialog)
         self.list.setGeometry(QtCore.QRect(240, 600, 200, 230))
@@ -94,6 +99,10 @@ class MainWindow(QtWidgets.QWidget):
         self.ui.button2.clicked.connect(self.button2_clicked) #play record from database button
         self.click_button2 = 0 # state of button2, 0 - not pushed, 1 - pushed
 
+        self.ui.button3.setStyleSheet("background-color: rgb(63, 196, 84);")
+        self.ui.button3.clicked.connect(self.button3_clicked) #make inference 
+        self.click_button3 = 0 # state of button3, 0 - not pushed, 1 - pushed
+        
         self.ui.list.itemClicked.connect(self.list_clicked)
         self.filename = ["hand_to_left", "hand_to_right", "stop_gesture"]
         self.onetime_event = 0
@@ -154,6 +163,20 @@ class MainWindow(QtWidgets.QWidget):
             self.ui.button2.setStyleSheet("background-color: rgb(63, 196, 84);")
             print("Back to real time plot")
             self.click_button2 = 0
+
+    def button3_clicked(self): #Behavior of clicked button3
+        # pass 
+        if self.click_button3 == 0 and self.click_button1 == 0:
+            self.ui.button3.setText("Stop inference")
+            self.ui.button3.setStyleSheet("background-color: rgb(220, 240, 4);")
+            print("Start Inference")
+            self.click_button3 = 1
+        elif self.click_button3 == 1:
+            self.ui.button3.setText("Start inference")
+            self.ui.button3.setStyleSheet("background-color: rgb(63, 196, 84);")
+            print("Back to real time plot")
+            self.click_button3 = 0
+            
 
     def list_clicked(self):
         row_number = self.ui.list.currentRow() #read the number of clicked row
