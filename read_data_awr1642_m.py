@@ -2,6 +2,8 @@ import sys
 import time
 import traceback
 from threading import Lock, Thread
+# import tensorflow as tf 
+# from numpy import genfromtxt
 
 import numpy as np
 import serial

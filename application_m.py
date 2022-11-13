@@ -7,6 +7,9 @@ from pyqtgraph.Qt import QtGui
 import read_data_awr1642_m as read_awr
 import time
 import numpy as np
+import tensorflow as tf 
+from numpy import genfromtxt
+import pandas as pd 
 
 #gui template generated from qtdesigner
 class Ui_Dialog(object):
@@ -104,7 +107,7 @@ class MainWindow(QtWidgets.QWidget):
         self.click_button3 = 0 # state of button3, 0 - not pushed, 1 - pushed
         
         self.ui.list.itemClicked.connect(self.list_clicked)
-        self.filename = ["hand_to_left", "hand_to_right", "stop_gesture"]
+        self.filename = ["arm_to_left", "arm_to_right", "stop_gesture"]
         self.onetime_event = 0
 
     def updatePlot(self): #update plot and values from radar
@@ -129,6 +132,11 @@ class MainWindow(QtWidgets.QWidget):
                 except:
                     print("error with plotting data from file")
             time.sleep(1)
+    
+    def do_inference(self): 
+        if self.click_button3 == 1: 
+            self.read_file_for_inference()
+
 
     def button1_clicked(self): #Behavior of button1
         if self.click_button1 == 0 and self.click_button2 == 0: #Can't work if button2 is clicked
@@ -166,17 +174,28 @@ class MainWindow(QtWidgets.QWidget):
 
     def button3_clicked(self): #Behavior of clicked button3
         # pass 
-        if self.click_button3 == 0 and self.click_button1 == 0:
+        if self.click_button3 == 0:
             self.ui.button3.setText("Stop inference")
             self.ui.button3.setStyleSheet("background-color: rgb(220, 240, 4);")
             print("Start Inference")
             self.click_button3 = 1
+            read_awr.if_button_is_pushed = 1 #Pass state of button to read_awr program
+
+            if self.onetime_event == 0: #Pass the number of spinBox to GestureNumber just once at the start of program
+                read_awr.GestureNumber = self.ui.spinBox.value()
+                self.onetime_event = 1
+            
+            dirpath = self.filename[self.ui.list.currentRow()]
+            path = "data/" + dirpath + "/gesture_" + str(read_awr.GestureNumber) + ".csv"
+            self.label_text("Save as: " + path) #Set the label text when saving data
+            self.do_inference()
+
         elif self.click_button3 == 1:
             self.ui.button3.setText("Start inference")
             self.ui.button3.setStyleSheet("background-color: rgb(63, 196, 84);")
-            print("Back to real time plot")
+            print("Back to real time plot - btn 3")
             self.click_button3 = 0
-            
+
 
     def list_clicked(self):
         row_number = self.ui.list.currentRow() #read the number of clicked row
@@ -224,6 +243,26 @@ class MainWindow(QtWidgets.QWidget):
         print("Close file")
 
         return FrameData, FrameNumber
+    
+    def read_file_for_inference(self):
+        row_number = self.ui.list.currentRow() # read the number of clicked row
+        gesture_number = self.ui.spinBox.value()
+        dirpath = self.filename[row_number]
+
+        print("Start reading data from csv file")
+        label = ["right","stop"]
+        path = "data/" + dirpath + "/gesture_" + str(gesture_number) + ".csv"
+        self.label_text("Open: "+path)
+        model = tf.keras.models.load_model('model/model_raw.h5')
+        data = pd.read_csv(path, usecols=[3,5,6]).values
+        data_empty = np.zeros((7263,))
+        data_concate = np.concatenate((data.reshape(-1,1), data_empty.reshape(-1,1)))
+        data_result = data_concate.reshape(-1,1)
+        data_result = data_result[:data_empty.shape[0]]
+        output = np.argmax(model.predict(data_result.reshape(1,-1)))
+        pred = label[output]
+        print(pred)
+
 
     def label_text(self,text): #change label text
         self.ui.label.setText(text)
@@ -237,6 +276,7 @@ def plot():
     p.setLabel('left', text='Y position (m)')
     p.setLabel('bottom', text='X position (m)')
     s = p.plot([], [], pen=None, symbol='o')
+
 
 if __name__ == "__main__":
     read_awr.main() #start read and process data from radars
