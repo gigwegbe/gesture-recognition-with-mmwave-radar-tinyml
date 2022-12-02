@@ -6,30 +6,40 @@
     $ sudo wget -c https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
     $ sudo chmod 744 Miniforge3-Linux-aarch64.sh
     $ ./Miniforge3-Linux-aarch64.sh
+    
+    # creating a virtual environment using conda called pi4
+    $ conda create -n pi4 python=3.9
+    $ conda activate pi4
+    $ conda list
+    $ conda update conda
     ```
 - [x] pip v22.3.1
     ```bash
-    ```
-- [x] Python3 v3.9.15
-    ```bash
+    $ pip install pip
     ```
 - [x] NumPy v1.23.5
     ```bash
+    $ pip install numpy
     ```
-- [ ] Pandas v
+- [ ] Pandas v1.5.2
     ```bash
+    $ pip install pandas
     ```
-- [ ] PySerial v
+- [ ] PySerial v3.5
     ```bash
+    $ pip install pyserial
     ```
 - [x] Tensorflow v2.11.0
     ```bash
+    $ pip install tensorflow
     ```
 - [x] QtBase5-dev *[Link](https://stackoverflow.com/a/71019962)*
     ```bash
+    $ sudo apt-get install qtbase5-dev
     ```
 - [x] PyQt-builder v1.14.0 *- this installs SIP v6.7.5*
     ```bash
+    $ pip install PyQt-builder
     ```
 - [x] PyQt v5.15.7 *[Link1](https://github.com/pypa/pip/issues/11286#issuecomment-1193156043)* *[link2](https://github.com/pypa/pip/issues/11286#issuecomment-1195615499)*
     ```bash
@@ -42,4 +52,5 @@
     ```
 - [x] PyQtGraph v0.13.1
     ```bash
+    $ pip install pyqtgraph
     ```
