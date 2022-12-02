@@ -48,7 +48,9 @@
     $ tar -xf PyQt5-5.15.7.tar.gz
     $ cd PyQt5-5.15.7/
     $ sip-install
-    # This is gonna take a while ... circa x minutes on Raspberry Pi 4
+    # This is gonna take a while ... circa thirty minutes on Raspberry Pi 4
+    # installing pyQt5-sip
+    $ pip install pyQt5-sip
     ```
 - [x] PyQtGraph v0.13.1
     ```bash
