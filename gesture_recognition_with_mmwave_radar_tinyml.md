@@ -21,11 +21,11 @@
     ```bash
     $ pip install numpy
     ```
-- [ ] Pandas v1.5.2
+- [x] Pandas v1.5.2
     ```bash
     $ pip install pandas
     ```
-- [ ] PySerial v3.5
+- [x] PySerial v3.5
     ```bash
     $ pip install pyserial
     ```
