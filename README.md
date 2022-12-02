@@ -1,10 +1,10 @@
 # Gesture Recognition with mmwave Radar Tinyml
 ## Setups
 - Install Texas instrument mmwave radar firmware sdk 2.01 - [Link](https://www.ti.com/tool/download/MMWAVE-SDK/02.01.00.04)
-- Run the demo script to visualizer data 
+- Run the demo script to visualize data 
 
     ### Flash firmware 
-    The firmware needs to to flashed to the  device using before running  any of  the  script. 
+    The firmware needs to to flashed to the device using before running any of the script. 
     - First install the SDK 
     - Flash the firmware onto the device 
 
